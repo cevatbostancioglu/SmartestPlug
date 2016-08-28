@@ -1,3 +1,12 @@
+/*
+* Author     : Cevat Bostancioglu
+* Date       : 28 AUG 2016
+* MCU        : ESP8266WiFi
+* Purpose    : Make smartplugs more affordable for everyone. 
+* Note       : Works with io.adafruit
+* Connection : Over Wifi w/ SSID-PASSWORD or just press modem WPS Button
+* E-mail/Loc : bostancioglucevat@gmail.com , Turkey/Ankara
+*/
 #include "smartestPlug.h"
 
 SmartestPlug::SmartestPlug(Adafruit_MQTT_Client* _mqtt,Adafruit_MQTT_Subscribe* _subscription,int _pinRelay)
@@ -15,19 +24,20 @@ void SmartestPlug::newSubscription(Adafruit_MQTT_Subscribe* _subscription)
 	subscription[subscriptionNumber++]=_subscription;
 }
 
-void SmartestPlug::newRule(char* pRule,	int plugNumber,int value)
+void SmartestPlug::newRule(Adafruit_MQTT_Subscribe* _subscription,char* pRule,	int plugNumber,int value)
 {
+	mqttRules[ruleNumber].subscription = _subscription;
 	strcpy(mqttRules[ruleNumber].ruleString,pRule);
 	mqttRules[ruleNumber].plugNumber=plugNumber;
 	mqttRules[ruleNumber].value=value;
 	ruleNumber++;
 }
 
-void SmartestPlug::checkRule(char *pRuleString)
+void SmartestPlug::checkRule(Adafruit_MQTT_Subscribe* _subscription,char *pRuleString)
 {
 	for(int i=0;i<ruleNumber;i++)
 	{
-		if(strstr(pRuleString,mqttRules[i].ruleString))
+		if(strstr(pRuleString,mqttRules[i].ruleString) && _subscription==mqttRules[i].subscription)
 		{
 			if(mqttRules[i].value==1)
 			{openPlug(mqttRules[i].plugNumber);}
@@ -39,13 +49,13 @@ void SmartestPlug::checkRule(char *pRuleString)
 
 void SmartestPlug::openPlug(int pNumber)
 {
-	Serial.print("Acildi");
+	Serial.print("**Open_");
 	Serial.println(pNumber);
 }
 
 void SmartestPlug::closePlug(int pNumber)
 {
-	Serial.print("Kapandi");
+	Serial.print("**Close_");
 	Serial.println(pNumber);	
 }
 
@@ -90,24 +100,15 @@ void SmartestPlug::readMQTT()
 		{
 			if(_subscription == subscription[i])
 			{
-				Serial.print(F("Got: "));
-				Serial.println((char *)subscription[i]->lastread);
+				if(debugOverSerial)
+				{
+					Serial.print(F("Got: "));
+					Serial.println((char *)subscription[i]->lastread);
+				}
 				
-				checkRule((char*)subscription[i]->lastread);
-				
+				checkRule(subscription[i],(char*)subscription[i]->lastread);
 			}
 		}
-		/*
-		if (_subscription == subscription) 
-		{
-			Serial.print(F("Got: "));
-			Serial.println((char *)subscription->lastread);
-			
-			if(strcmp((char*)subscription->lastread,"ON")==0)
-			{openPlug();}
-			else if(strcmp((char*)subscription->lastread,"OFF")==0)
-			{closePlug();}
-		}*/
 	}
 }
 

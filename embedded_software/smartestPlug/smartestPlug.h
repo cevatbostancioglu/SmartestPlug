@@ -1,3 +1,12 @@
+/*
+* Author     : Cevat Bostancioglu
+* Date       : 28 AUG 2016
+* MCU        : ESP8266WiFi
+* Purpose    : Make smartplugs more affordable for everyone. 
+* Note       : Works with io.adafruit
+* Connection : Over Wifi w/ SSID-PASSWORD or just press modem WPS Button
+* E-mail/Loc : bostancioglucevat@gmail.com , Turkey/Ankara
+*/
 #ifndef SMARTEST_PLUG_H
 #define SMARTEST_PLUG_H
 
@@ -13,6 +22,7 @@ typedef struct
 	char ruleString[10];
 	int plugNumber;
 	int value;
+	Adafruit_MQTT_Subscribe *subscription;
 }mqttRule;
 
 class SmartestPlug
@@ -33,8 +43,8 @@ public:
 	SmartestPlug(Adafruit_MQTT_Client* _mqtt,Adafruit_MQTT_Subscribe* _subscription,int _pinRelay);
 	
 	void newSubscription(Adafruit_MQTT_Subscribe* _subscription);
-	void newRule(char* pRule,int plugNumber,int value);
-	void checkRule(char *pRuleString);
+	void newRule(Adafruit_MQTT_Subscribe* _subscription,char* pRule,int plugNumber,int value);
+	void checkRule(Adafruit_MQTT_Subscribe* _subscription,char *pRuleString);
 	
 	void Read_Updates();
 	void Write_Updates();
