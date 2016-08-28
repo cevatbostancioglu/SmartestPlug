@@ -1,143 +1,172 @@
-// #include "smartestPlug.h"
+#include "smartestPlug.h"
 
-// SmartestPlug::SmartestPlug(Adafruit_MQTT_Client* _mqtt,Adafruit_MQTT_Subscribe* _subscription,int _pinRelay)
-// {
-	// mqtt=_mqtt;
-	// pinRelay = _pinRelay;
-	// subscription=_subscription;	
-// }
-
-// void SmartestPlug::openPlug()
-// {
-	// Serial.println("Acildi.");
-// }
-
-// void SmartestPlug::closePlug()
-// {
-	// Serial.println("Kapatildi.");
-// }
-
-// void SmartestPlug::writeMQTT()
-// {
+SmartestPlug::SmartestPlug(Adafruit_MQTT_Client* _mqtt,Adafruit_MQTT_Subscribe* _subscription,int _pinRelay)
+{
+	subscriptionNumber=0;
+	ruleNumber=0;
 	
-// }
+	mqtt=_mqtt;
+	pinRelay = _pinRelay;
+	subscription[subscriptionNumber++]=_subscription;	
+}
 
-// void SmartestPlug::Read_Updates();
+void SmartestPlug::newSubscription(Adafruit_MQTT_Subscribe* _subscription)
+{
+	subscription[subscriptionNumber++]=_subscription;
+}
 
-// void SmartestPlug::Write_Updates();
+void SmartestPlug::newRule(char* pRule,	int plugNumber,int value)
+{
+	strcpy(mqttRules[ruleNumber].ruleString,pRule);
+	mqttRules[ruleNumber].plugNumber=plugNumber;
+	mqttRules[ruleNumber].value=value;
+	ruleNumber++;
+}
 
-// void SmartestPlug::Connect()
-// {
-	// MQTT_INIT();
-	// MQTT_Connect();
-// }
+void SmartestPlug::checkRule(char *pRuleString)
+{
+	for(int i=0;i<ruleNumber;i++)
+	{
+		if(strstr(pRuleString,mqttRules[i].ruleString))
+		{
+			if(mqttRules[i].value==1)
+			{openPlug(mqttRules[i].plugNumber);}
+			else if(mqttRules[i].value==0)
+			{closePlug(mqttRules[i].plugNumber);}
+		}
+	}
+}
 
+void SmartestPlug::openPlug(int pNumber)
+{
+	Serial.print("Acildi");
+	Serial.println(pNumber);
+}
 
-// void SmartestPlug::MQTT_INIT()
-// {
-	// if(debugOverSerial)
-	// {
-		// Serial.println(); Serial.println();
-		// Serial.print("Connecting to ");
-		// Serial.println(WLAN_SSID);
-	// }
+void SmartestPlug::closePlug(int pNumber)
+{
+	Serial.print("Kapandi");
+	Serial.println(pNumber);	
+}
+
+void SmartestPlug::writeMQTT()
+{
 	
-	// WiFi.begin(WLAN_SSID, WLAN_PASS);
+}
 
-	// while (WiFi.status() != WL_CONNECTED) 
-	// {
-		// delay(500);
-		
-		// if(debugOverSerial)
-		// {Serial.print(".");}
-	// }
+void SmartestPlug::Read_Updates()
+{
+	readMQTT();
+}
+
+void SmartestPlug::Write_Updates()
+{
 	
-	// if(debugOverSerial)
-	// {
-		// Serial.println();
-		// Serial.println("WiFi connected");
-		// Serial.println("IP address: "); 
-		// Serial.println(WiFi.localIP());
-	// }
+}
+
+void SmartestPlug::Connect()
+{
+	MQTT_INIT();
+	MQTT_Connect();
+}
+
+
+void SmartestPlug::MQTT_INIT()
+{
 	// // Setup MQTT subscription for onoff feed.
-	// mqtt.subscribe(&subscription);
-// }
+	for(int i=0;i<subscriptionNumber;i++)
+	{mqtt->subscribe(subscription[i]);}
+}
 
-// void SmartestPlug::readMQTT()
-// {
-	// // Ensure the connection to the MQTT server is alive (this will make the first
-	// // connection and automatically reconnect when disconnected).  See the MQTT_connect
-	// // function definition further below.
-	// Adafruit_MQTT_Subscribe *_subscription;
-	// while ((_subscription = mqtt.readSubscription(5000))) 
-	// {
-		// if (_subscription == &subscription) 
-		// {
-			// Serial.print(F("Got: "));
-			// Serial.println((char *)subscription.lastread);
+void SmartestPlug::readMQTT()
+{
+	// Ensure the connection to the MQTT server is alive (this will make the first
+	// connection and automatically reconnect when disconnected).  See the MQTT_connect
+	// function definition further below.
+	Adafruit_MQTT_Subscribe *_subscription;
+	while ((_subscription = mqtt->readSubscription(5000))) 
+	{
+		for(int i=0;i<subscriptionNumber;i++)
+		{
+			if(_subscription == subscription[i])
+			{
+				Serial.print(F("Got: "));
+				Serial.println((char *)subscription[i]->lastread);
+				
+				checkRule((char*)subscription[i]->lastread);
+				
+			}
+		}
+		/*
+		if (_subscription == subscription) 
+		{
+			Serial.print(F("Got: "));
+			Serial.println((char *)subscription->lastread);
 			
-			// if(strstr((char*)subscription.lastread,"1"))
-			// {openDoor();}
-		// }
-	// }
-// }
+			if(strcmp((char*)subscription->lastread,"ON")==0)
+			{openPlug();}
+			else if(strcmp((char*)subscription->lastread,"OFF")==0)
+			{closePlug();}
+		}*/
+	}
+}
 
 
 
-// void SmartestPlug::printHex(byte *buffer, byte bufferSize) 
-// {
-	// for (byte i = 0; i < bufferSize; i++) 
-	// {
-		// Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-		// Serial.print(buffer[i], HEX);
-	// }
-// }
+void SmartestPlug::printHex(byte *buffer, byte bufferSize) 
+{
+	for (byte i = 0; i < bufferSize; i++) 
+	{
+		Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+		Serial.print(buffer[i], HEX);
+	}
+}
 
-// /**
-// * Helper routine to dump a byte array as dec values to Serial.
-// */
-// void SmartestPlug::printDec(byte *buffer, byte bufferSize) {
-	// for (byte i = 0; i < bufferSize; i++) {
-		// Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-		// Serial.print(buffer[i], DEC);
-	// }
-// }
+/**
+* Helper routine to dump a byte array as dec values to Serial.
+*/
+void SmartestPlug::printDec(byte *buffer, byte bufferSize) {
+	for (byte i = 0; i < bufferSize; i++) {
+		Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+		Serial.print(buffer[i], DEC);
+	}
+}
 
-// // Bug workaround for Arduino 1.6.6, it seems to need a function declaration
-// // for some reason (only affects ESP8266, likely an arduino-builder bug).
-// // Function to connect and reconnect as necessary to the MQTT server.
-// // Should be called in the loop function and it will take care if connecting.
-// void SmartestPlug::MQTT_Connect() {
+// Bug workaround for Arduino 1.6.6, it seems to need a function declaration
+// for some reason (only affects ESP8266, likely an arduino-builder bug).
+// Function to connect and reconnect as necessary to the MQTT server.
+// Should be called in the loop function and it will take care if connecting.
+void SmartestPlug::MQTT_Connect() {
 	
-	// int8_t ret;
+	int8_t ret;
 
-	// // Stop if already connected.
-	// if (mqtt.connected()) {
-		// return;
-	// }
+	// Stop if already connected.
+	if (mqtt->connected()) {
+		return;
+	}
 	
-	// if(debugOverSerial)
-	// {Serial.print("Connecting to MQTT... ");}
+	if(debugOverSerial)
+	{Serial.print("Connecting to MQTT... ");}
 
-	// uint8_t retries = 3;
-	// while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-		// if(debugOverSerial)
-		// {
-			// Serial.println(mqtt.connectErrorString(ret));
-			// Serial.println("Retrying MQTT connection in 3 seconds...");
-		// }
+	uint8_t retries = 3;
+	while ((ret = mqtt->connect()) != 0) { // connect will return 0 for connected
+		if(debugOverSerial)
+		{
+			Serial.println(mqtt->connectErrorString(ret));
+			Serial.println("Retrying MQTT connection in 3 seconds...");
+		}
 		
-		// mqtt.disconnect();
-		// delay(3000);  // wait 3 seconds
-		// retries--;
-		// if (retries == 0) {
-			// // basically die and wait for WDT to reset me
-			// while (1);
-		// }
-	// }
+		mqtt->disconnect();
+		delay(3000);  // wait 3 seconds
+		retries--;
+		if (retries == 0) {
+			// basically die and wait for WDT to reset me
+			while (1);
+		}
+	}
 	
-	// if(debugOverSerial)
-	// {Serial.println("MQTT Connected!");}
+	if(debugOverSerial)
+	{Serial.println("MQTT Connected!");}
 
-	// //mqttWriter.attach(5,writeMQTT);
-// }
+	//mqttWriter.attach(5,writeMQTT);
+}
